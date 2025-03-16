@@ -7,9 +7,11 @@ $(document).ready(function() {
             const headers = data.values[0];
             const rows = data.values.slice(1);
             const tableHeader = $('#table-header');
+            const tableFooter = $('#table-footer');
 
             headers.forEach(header => {
                 tableHeader.append($('<th>').text(header));
+                tableFooter.append($('<th>').html(`<input type="text" class="search-input" placeholder="${header}" />`));
             });
 
             // Find the index of the "Material name" column
@@ -70,7 +72,19 @@ $(document).ready(function() {
                         $('#myModal').css('display', 'block');
                         updateCustomContent();
                     }
-                }]
+                }],
+                initComplete: function() {
+                    this.api().columns().every(function() {
+                        let column = this;
+                        let input = $('input', column.footer());
+
+                        input.on('keyup change clear', function() {
+                            if (column.search() !== this.value) {
+                                column.search(this.value).draw();
+                            }
+                        });
+                    });
+                }
             });
 
             let selectedRowOrder = [];
@@ -161,29 +175,34 @@ $(document).ready(function() {
                 });
                 // Remove border before printing
                 $('#label').css('border', 'none')
+ 
+				function printLabel() {
+					const labelContent = document.querySelector("#label").innerHTML;
+					const printWindow = window.open('', '_blank');
+					printWindow.document.write('<html><head><title>Print</title>');
+					printWindow.document.write('<style>#label-print {width: 6cm;font-size:12px;font-family:Time;padding:5px;background-color:white;border:0;overflow:hidden;overflow-wrap: break-word;}#customContent p {margin:0;} .process {border-bottom: 1px dashed black;margin-bottom: 5px;padding-bottom: 5px;}</style>');
+					printWindow.document.write('</head><body>');
+					printWindow.document.write('<div id="label-print">' + labelContent + '</div>');
+					printWindow.document.write('</body></html>');
+					printWindow.document.close();
+					printWindow.print();
+					printWindow.close();
 
-                // Generate image and print. Scale it x10 with html2canvas to increse the resolotion and scale back using css to keep correct dimensions - Might not be needed, depending on printer
-                html2canvas(document.querySelector("#label"), {
-                    scale: 10
-                }).then(canvas => {
-                    const imgData = canvas.toDataURL('image/png');
-                    const printWindow = window.open('', '_blank');
-                    printWindow.document.write('<img style="transform: scale(0.1);transform-origin: 0 0;" src="' + imgData + '" onload="window.print();window.close() " />');
-                    printWindow.document.close();
-
-                    // Remove the created div and show textarea again
-                    $('#label .customNotes').each(function() {
-                        if ($(this).next('div').length) {
-                            $(this).next('div').remove();
-                            $(this).show();
-                        } else {
-                            // Show empty textareas again
-                            $(this).css('display', 'block');
-                            // Show border again
-                            $('#label').css('border', '2px solid black')
-                        }
-                    });
-                });
+					// Remove the created div and show textarea again
+					document.querySelectorAll('#label .customNotes').forEach(function(element) {
+						if (element.nextElementSibling) {
+							element.nextElementSibling.remove();
+							element.style.display = 'block';
+						} else {
+							// Show empty textareas again
+							element.style.display = 'block';
+							// Show border again
+							document.querySelector('#label').style.border = '2px solid black';
+						}
+					});
+				}
+				printLabel()
+				
             });
             // Generate anchor elements for all columns
             headers.forEach((header, index) => {
